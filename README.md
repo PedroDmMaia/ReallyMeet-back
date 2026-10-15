@@ -48,7 +48,7 @@ RUN_MIGRATIONS_ON_BOOT=1
 
 Isso roda `prisma migrate deploy` antes do Nest (sem `npx`, usando o CLI em `node_modules`). Localmente omita essa variável.
 
-Se a migration falhar por `DATABASE_URL`, corrija credenciais e redeploy. Emergência: `SKIP_PRISMA_MIGRATE=1` só se as tabelas já existirem no MySQL.
+Se a migration falhar, veja no log as linhas `[really-meet] prisma stderr:` (credenciais, host MySQL, SSL). Emergência: aplique `prisma/migrations/.../migration.sql` no phpMyAdmin e use `SKIP_PRISMA_MIGRATE=1` ou remova `RUN_MIGRATIONS_ON_BOOT`.
 
 ### `DATABASE_URL` na Hostinger
 
@@ -58,7 +58,9 @@ No painel de variáveis de ambiente (não use `localhost` do Docker local). Copi
 DATABASE_URL="mysql://USUARIO:SENHA@mysql123.hostinger.com:3306/u123456789_reallymeet"
 ```
 
-Se o build ainda mostrar `localhost:3306`, a Hostinger está lendo um `.env` antigo no repositório ou variável errada no painel — corrija lá e redeploy.
+Codifique caracteres especiais da senha na URL (`@` → `%40`, `#` → `%23`, etc.). No Node na mesma conta Hostinger, o host costuma ser o **MySQL hostname** do hPanel (às vezes `127.0.0.1` também funciona).
+
+Se o log mostrar `localhost:3306`, a variável não está no painel (ou um `.env` antigo sobrescreve) — defina `DATABASE_URL` só no painel e redeploy.
 
 Demais variáveis: JWT, LiveKit, `CORS_ORIGINS` (URL do front).
 

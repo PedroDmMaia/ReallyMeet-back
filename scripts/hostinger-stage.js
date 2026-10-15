@@ -17,4 +17,16 @@ if (!fs.existsSync(prismaSrc)) {
 fs.rmSync(databaseBundle, { recursive: true, force: true });
 fs.mkdirSync(databaseBundle, { recursive: true });
 fs.cpSync(prismaSrc, prismaDest, { recursive: true });
-console.log('[hostinger-stage] schema copiado para dist/database/prisma');
+
+const migrationsDir = path.join(prismaDest, 'migrations');
+const migrationCount = fs.existsSync(migrationsDir)
+  ? fs.readdirSync(migrationsDir).filter((name) => name !== 'migration_lock.toml').length
+  : 0;
+if (migrationCount === 0) {
+  console.error('[hostinger-stage] nenhuma migration em prisma/migrations');
+  process.exit(1);
+}
+
+console.log(
+  `[hostinger-stage] prisma copiado para dist/database/prisma (${migrationCount} migration(s))`,
+);

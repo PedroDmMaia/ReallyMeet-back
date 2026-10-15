@@ -2,22 +2,27 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { config as loadDotenv } from 'dotenv';
 import { AppModule } from './app.module';
 
-function resolveMigrationRoot(): string {
+function resolveAppRoot(): string {
+  return join(__dirname, '..');
+}
+
+function resolvePrismaSchemaPath(): string | null {
   const distDir = __dirname;
   const bundledSchema = join(distDir, 'database', 'prisma', 'schema.prisma');
   if (existsSync(bundledSchema)) {
-    return join(distDir, 'database');
+    return bundledSchema;
   }
   const repoSchema = join(distDir, '..', 'prisma', 'schema.prisma');
   if (existsSync(repoSchema)) {
-    return join(distDir, '..');
+    return repoSchema;
   }
-  return join(distDir, '..');
+  return null;
 }
 
 function resolvePrismaCli(startDir: string): string {
@@ -43,14 +48,63 @@ function runProductionMigrations(): void {
   if (process.env.RUN_MIGRATIONS_ON_BOOT !== '1') {
     return;
   }
-  const migrationRoot = resolveMigrationRoot();
-  const prismaCli = resolvePrismaCli(migrationRoot);
-  console.log('[really-meet] Applying Prisma migrations...', { migrationRoot });
-  execSync(`node "${prismaCli}" migrate deploy`, {
-    stdio: 'inherit',
-    env: process.env,
-    cwd: migrationRoot,
+
+  const appRoot = resolveAppRoot();
+  loadDotenv({ path: join(appRoot, '.env') });
+
+  const schemaPath = resolvePrismaSchemaPath();
+  if (!schemaPath) {
+    throw new Error(
+      '[really-meet] schema.prisma não encontrado (dist/database/prisma ou prisma/).',
+    );
+  }
+
+  const migrationsDir = join(schemaPath, '..', 'migrations');
+  if (!existsSync(migrationsDir)) {
+    throw new Error(
+      `[really-meet] pasta migrations ausente: ${migrationsDir}`,
+    );
+  }
+
+  if (!process.env.DATABASE_URL?.trim()) {
+    throw new Error(
+      '[really-meet] DATABASE_URL não definida (painel Hostinger ou .env na raiz do app).',
+    );
+  }
+
+  const prismaCli = resolvePrismaCli(appRoot);
+  console.log('[really-meet] Applying Prisma migrations...', {
+    appRoot,
+    schemaPath,
   });
+
+  try {
+    execFileSync(
+      process.execPath,
+      [prismaCli, 'migrate', 'deploy', '--schema', schemaPath],
+      {
+        cwd: appRoot,
+        env: process.env,
+        stdio: 'pipe',
+        encoding: 'utf8',
+      },
+    );
+  } catch (error: unknown) {
+    const err = error as {
+      status?: number;
+      stdout?: string;
+      stderr?: string;
+      message?: string;
+    };
+    if (err.stdout?.trim()) {
+      console.error('[really-meet] prisma stdout:', err.stdout.trim());
+    }
+    if (err.stderr?.trim()) {
+      console.error('[really-meet] prisma stderr:', err.stderr.trim());
+    }
+    console.error('[really-meet] Migration failed.', err.message ?? error);
+    throw error;
+  }
 }
 
 async function bootstrap() {
