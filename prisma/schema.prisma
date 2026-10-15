@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoomStatus {
+  OPEN
+  CLOSED
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  rooms        Room[]         @relation("RoomCreator")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model Room {
+  id               String     @id @default(uuid())
+  slug             String     @unique
+  title            String
+  isPublic         Boolean    @default(true)
+  status           RoomStatus @default(OPEN)
+  createdById      String
+  participantCount Int        @default(0)
+  lastActivityAt   DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  createdBy        User       @relation("RoomCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status, isPublic, lastActivityAt])
+  @@index([createdById])
+}
