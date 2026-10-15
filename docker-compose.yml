@@ -1,0 +1,25 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: reallymeet-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_change_me
+      MYSQL_DATABASE: reallymeet
+      MYSQL_USER: reallymeet
+      MYSQL_PASSWORD: reallymeet_dev
+    volumes:
+      - reallymeet_mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ureallymeet", "-preallymeet_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  reallymeet_mysql_data:
