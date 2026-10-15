@@ -32,11 +32,19 @@ O painel só permite escolher **um script npm por campo**. Use:
 | Comando de construção | **`build:hostinger`** |
 | Gerenciador de pacotes | `npm` |
 | Diretório de saída | `dist` |
-| Arquivo de entrada | **`server.js`** (na raiz do repo, não `dist/main.js`) |
+| Arquivo de entrada | **`main.js`** (relativo à pasta `dist`, **não** `dist/main.js`) |
 
-Script de execução (se houver campo separado): **`start:hostinger`**.
+Script de execução (se houver campo separado): **`start:prod`**.
 
-O **build não conecta no MySQL** (só `prisma generate` + `nest build`). As migrations rodam na **subida** do app via `server.js`.
+Com saída em `dist`, a Hostinger procura o entry **dentro** de `dist/`. Se você usar `dist/main.js`, ela falha com *Entry file not found*.
+
+O build **não** conecta no MySQL. Na subida, defina no painel:
+
+```env
+RUN_MIGRATIONS_ON_BOOT=1
+```
+
+Isso roda `prisma migrate deploy` antes do Nest (em `main.ts`). Localmente omita essa variável.
 
 ### `DATABASE_URL` na Hostinger
 

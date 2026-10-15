@@ -2,9 +2,28 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { execSync } from 'node:child_process';
+import { join } from 'node:path';
 import { AppModule } from './app.module';
 
+function runProductionMigrations(): void {
+  if (process.env.SKIP_PRISMA_MIGRATE === '1') {
+    return;
+  }
+  if (process.env.RUN_MIGRATIONS_ON_BOOT !== '1') {
+    return;
+  }
+  const appRoot = join(__dirname, '..');
+  console.log('[really-meet] Applying Prisma migrations...');
+  execSync('npx prisma migrate deploy', {
+    stdio: 'inherit',
+    env: process.env,
+    cwd: appRoot,
+  });
+}
+
 async function bootstrap() {
+  runProductionMigrations();
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
