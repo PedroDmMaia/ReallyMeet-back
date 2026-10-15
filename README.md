@@ -38,13 +38,17 @@ Script de execução (se houver campo separado): **`start:prod`**.
 
 Com saída em `dist`, a Hostinger procura o entry **dentro** de `dist/`. Se você usar `dist/main.js`, ela falha com *Entry file not found*.
 
-O build **não** conecta no MySQL. Na subida, defina no painel:
+O build **não** conecta no MySQL, mas copia `prisma/` para `dist/prisma` (Hostinger publica só `dist/`).
+
+Na subida, defina no painel:
 
 ```env
 RUN_MIGRATIONS_ON_BOOT=1
 ```
 
-Isso roda `prisma migrate deploy` antes do Nest (em `main.ts`). Localmente omita essa variável.
+Isso roda `prisma migrate deploy` antes do Nest (sem `npx`, usando o CLI em `node_modules`). Localmente omita essa variável.
+
+Se a migration falhar por `DATABASE_URL`, corrija credenciais e redeploy. Emergência: `SKIP_PRISMA_MIGRATE=1` só se as tabelas já existirem no MySQL.
 
 ### `DATABASE_URL` na Hostinger
 

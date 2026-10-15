@@ -8,7 +8,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "build": "nest build",
-    "build:hostinger": "prisma generate && nest build",
+    "build:hostinger": "prisma generate && nest build && node scripts/hostinger-stage.js",
     "start:hostinger": "node server.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

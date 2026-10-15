@@ -3,8 +3,33 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
+
+function resolveMigrationRoot(): string {
+  const distDir = __dirname;
+  if (existsSync(join(distDir, 'prisma', 'schema.prisma'))) {
+    return distDir;
+  }
+  return join(distDir, '..');
+}
+
+function resolvePrismaCli(startDir: string): string {
+  let dir = startDir;
+  for (let depth = 0; depth < 5; depth += 1) {
+    const cli = join(dir, 'node_modules', 'prisma', 'build', 'index.js');
+    if (existsSync(cli)) {
+      return cli;
+    }
+    const parent = join(dir, '..');
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  throw new Error('Prisma CLI não encontrado no deploy (node_modules/prisma).');
+}
 
 function runProductionMigrations(): void {
   if (process.env.SKIP_PRISMA_MIGRATE === '1') {
@@ -13,12 +38,13 @@ function runProductionMigrations(): void {
   if (process.env.RUN_MIGRATIONS_ON_BOOT !== '1') {
     return;
   }
-  const appRoot = join(__dirname, '..');
-  console.log('[really-meet] Applying Prisma migrations...');
-  execSync('npx prisma migrate deploy', {
+  const migrationRoot = resolveMigrationRoot();
+  const prismaCli = resolvePrismaCli(migrationRoot);
+  console.log('[really-meet] Applying Prisma migrations...', { migrationRoot });
+  execSync(`node "${prismaCli}" migrate deploy`, {
     stdio: 'inherit',
     env: process.env,
-    cwd: appRoot,
+    cwd: migrationRoot,
   });
 }
 
@@ -76,7 +102,7 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger));
 
   const port = Number(config.get('PORT') ?? 3000);
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`Really Meet API em http://127.0.0.1:${port}`);
   console.log(`Swagger em http://127.0.0.1:${port}/docs`);
 }
