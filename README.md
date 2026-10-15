@@ -32,13 +32,23 @@ O painel só permite escolher **um script npm por campo**. Use:
 | Comando de construção | **`build:hostinger`** |
 | Gerenciador de pacotes | `npm` |
 | Diretório de saída | `dist` |
-| Arquivo de entrada | `dist/main.js` |
+| Arquivo de entrada | **`server.js`** (na raiz do repo, não `dist/main.js`) |
 
-Script de execução (se houver campo separado): **`start:prod`**.
+Script de execução (se houver campo separado): **`start:hostinger`**.
 
-O `postinstall` roda `prisma generate` após o `npm install` da Hostinger. O `build:hostinger` compila o Nest e aplica migrations no MySQL de produção.
+O **build não conecta no MySQL** (só `prisma generate` + `nest build`). As migrations rodam na **subida** do app via `server.js`.
 
-Configure no painel as variáveis do `.env.example` (`DATABASE_URL`, JWT, LiveKit, `CORS_ORIGINS` com a URL do seu front).
+### `DATABASE_URL` na Hostinger
+
+No painel de variáveis de ambiente (não use `localhost` do Docker local). Copie do hPanel → **Bancos de dados MySQL** → host remoto, usuário, senha e nome do banco, por exemplo:
+
+```env
+DATABASE_URL="mysql://USUARIO:SENHA@mysql123.hostinger.com:3306/u123456789_reallymeet"
+```
+
+Se o build ainda mostrar `localhost:3306`, a Hostinger está lendo um `.env` antigo no repositório ou variável errada no painel — corrija lá e redeploy.
+
+Demais variáveis: JWT, LiveKit, `CORS_ORIGINS` (URL do front).
 
 ## Scripts
 
@@ -46,7 +56,8 @@ Configure no painel as variáveis do `.env.example` (`DATABASE_URL`, JWT, LiveKi
 |--------|--------|
 | `npm run start:dev` | API em watch |
 | `npm run build` | Compila TypeScript (local) |
-| `npm run build:hostinger` | Generate Prisma + build + migrate deploy (Hostinger) |
+| `npm run build:hostinger` | Generate Prisma + build (Hostinger, sem DB) |
+| `npm run start:hostinger` | Migrations + API (`node server.js`) |
 | `npm run prisma:generate` | Gera Prisma Client |
 | `npm run prisma:migrate` | Migration interativa (dev) |
 | `npm run prisma:deploy` | Aplica migrations (CI/prod) |
