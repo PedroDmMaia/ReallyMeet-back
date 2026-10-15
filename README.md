@@ -23,12 +23,30 @@ npm run start:dev
 Endpoints principais e exemplos: [docs/api.md](docs/api.md).  
 Swagger interativo: `http://127.0.0.1:3000/docs`.
 
+## Deploy na Hostinger (Node.js)
+
+O painel só permite escolher **um script npm por campo**. Use:
+
+| Campo no painel | Escolha |
+|-----------------|--------|
+| Comando de construção | **`build:hostinger`** |
+| Gerenciador de pacotes | `npm` |
+| Diretório de saída | `dist` |
+| Arquivo de entrada | `dist/main.js` |
+
+Script de execução (se houver campo separado): **`start:prod`**.
+
+O `postinstall` roda `prisma generate` após o `npm install` da Hostinger. O `build:hostinger` compila o Nest e aplica migrations no MySQL de produção.
+
+Configure no painel as variáveis do `.env.example` (`DATABASE_URL`, JWT, LiveKit, `CORS_ORIGINS` com a URL do seu front).
+
 ## Scripts
 
 | Script | Função |
 |--------|--------|
 | `npm run start:dev` | API em watch |
-| `npm run build` | Compila TypeScript |
+| `npm run build` | Compila TypeScript (local) |
+| `npm run build:hostinger` | Generate Prisma + build + migrate deploy (Hostinger) |
 | `npm run prisma:generate` | Gera Prisma Client |
 | `npm run prisma:migrate` | Migration interativa (dev) |
 | `npm run prisma:deploy` | Aplica migrations (CI/prod) |
