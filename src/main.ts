@@ -9,8 +9,13 @@ import { AppModule } from './app.module';
 
 function resolveMigrationRoot(): string {
   const distDir = __dirname;
-  if (existsSync(join(distDir, 'prisma', 'schema.prisma'))) {
-    return distDir;
+  const bundledSchema = join(distDir, 'database', 'prisma', 'schema.prisma');
+  if (existsSync(bundledSchema)) {
+    return join(distDir, 'database');
+  }
+  const repoSchema = join(distDir, '..', 'prisma', 'schema.prisma');
+  if (existsSync(repoSchema)) {
+    return join(distDir, '..');
   }
   return join(distDir, '..');
 }

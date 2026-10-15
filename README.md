@@ -38,7 +38,7 @@ Script de execução (se houver campo separado): **`start:prod`**.
 
 Com saída em `dist`, a Hostinger procura o entry **dentro** de `dist/`. Se você usar `dist/main.js`, ela falha com *Entry file not found*.
 
-O build **não** conecta no MySQL, mas copia `prisma/` para `dist/prisma` (Hostinger publica só `dist/`).
+O build **não** conecta no MySQL, mas copia o schema para `dist/database/prisma` (Hostinger publica só `dist/` — **não** sobrescreve `dist/prisma/*.js` do Nest).
 
 Na subida, defina no painel:
 
