@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -8,8 +9,12 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { CheckEmailDto } from './dto/check-email.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { OtpService } from './otp.service';
 import { AuthUser, JwtPayload } from './types';
 
 @Injectable()
@@ -18,26 +23,89 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly otp: OtpService,
   ) {}
 
+  async checkEmailAndSendCode(dto: CheckEmailDto) {
+    const email = this.otp.normalizeEmail(dto.email);
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return { ok: false as const, reason: 'email_taken' as const };
+    }
+
+    const sent = await this.otp.sendRegistrationCode(email);
+    return {
+      ok: true as const,
+      codeSent: true as const,
+      expiresInMinutes: sent.expiresInMinutes,
+      ...(sent.devCode ? { devCode: sent.devCode } : {}),
+    };
+  }
+
+  async resendRegistrationCode(dto: CheckEmailDto) {
+    return this.checkEmailAndSendCode(dto);
+  }
+
   async register(dto: RegisterDto) {
-    const email = dto.email.trim().toLowerCase();
+    const email = this.otp.normalizeEmail(dto.email);
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new ConflictException('E-mail já cadastrado');
     }
 
+    await this.otp.verifyRegistrationCode(email, dto.verificationCode);
+
     const passwordHash = await bcrypt.hash(dto.password, 12);
+    const now = new Date();
     const user = await this.prisma.user.create({
       data: {
         email,
         passwordHash,
         displayName: dto.displayName.trim(),
+        emailVerifiedAt: now,
       },
       select: { id: true, email: true, displayName: true },
     });
 
     return this.issueTokens(user);
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const email = this.otp.normalizeEmail(dto.email);
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    let devCode: string | undefined;
+    if (user) {
+      const sent = await this.otp.sendPasswordResetCode(email);
+      devCode = sent.devCode;
+    }
+    return {
+      message:
+        'Se o e-mail estiver cadastrado, enviamos um código de recuperação.',
+      ...(devCode ? { devCode } : {}),
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const email = this.otp.normalizeEmail(dto.email);
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('Não foi possível redefinir a senha.');
+    }
+
+    await this.otp.verifyPasswordResetCode(email, dto.code);
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    return { success: true };
   }
 
   async login(dto: LoginDto) {

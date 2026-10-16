@@ -62,7 +62,9 @@ Codifique caracteres especiais da senha na URL (`@` → `%40`, `#` → `%23`, et
 
 Se o log mostrar `localhost:3306`, a variável não está no painel (ou um `.env` antigo sobrescreve) — defina `DATABASE_URL` só no painel e redeploy.
 
-Demais variáveis: JWT, LiveKit, `CORS_ORIGINS` (URL do front).
+Demais variáveis: JWT, LiveKit, `CORS_ORIGINS` (URL do front), **SMTP** para OTP (`MAIL_HOST`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`). Em dev, sem SMTP: `MAIL_DEV_RETURN_CODE=1` mostra o código na API/tela e no log; **não** use isso em produção com SMTP desligado.
+
+**Hostinger:** crie um e-mail no hPanel (ex. `noreply@seudominio.com`), use `smtp.hostinger.com`, porta **465**, `MAIL_SECURE=true`, usuário = endereço completo, senha = da caixa de e-mail.
 
 ## Scripts
 

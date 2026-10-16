@@ -3,9 +3,12 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
+import { CheckEmailDto } from './dto/check-email.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthUser } from './types';
 
@@ -14,9 +17,33 @@ import type { AuthUser } from './types';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @Post('check-email')
+  checkEmail(@Body() dto: CheckEmailDto) {
+    return this.authService.checkEmailAndSendCode(dto);
+  }
+
+  @Throttle({ default: { limit: 4, ttl: 60_000 } })
+  @Post('send-registration-code')
+  resendRegistrationCode(@Body() dto: CheckEmailDto) {
+    return this.authService.resendRegistrationCode(dto);
+  }
+
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Throttle({ default: { limit: 4, ttl: 60_000 } })
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

@@ -12,15 +12,33 @@ enum RoomStatus {
   CLOSED
 }
 
+enum OtpPurpose {
+  REGISTER
+  PASSWORD_RESET
+}
+
 model User {
-  id           String         @id @default(uuid())
-  email        String         @unique
-  passwordHash String
-  displayName  String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  refreshTokens RefreshToken[]
-  rooms        Room[]         @relation("RoomCreator")
+  id               String         @id @default(uuid())
+  email            String         @unique
+  passwordHash     String
+  displayName      String
+  emailVerifiedAt  DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  refreshTokens    RefreshToken[]
+  rooms            Room[]         @relation("RoomCreator")
+}
+
+model EmailOtp {
+  id        String     @id @default(uuid())
+  email     String
+  purpose   OtpPurpose
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime   @default(now())
+
+  @@index([email, purpose, createdAt])
 }
 
 model RefreshToken {

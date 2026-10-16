@@ -13,7 +13,39 @@ Autenticação: `Authorization: Bearer <accessToken>` nas rotas protegidas.
 { "status": "ok" }
 ```
 
+## Desktop
+
+### `GET /desktop/latest`
+
+Versão mais recente do app desktop, lida das GitHub Releases `desktop-vX.Y.Z` (cache de 5 min). Usada pelo updater do app instalado.
+
+```json
+{
+  "version": "0.1.1",
+  "downloadUrl": "https://github.com/.../ReallyMeet-0.1.1.msi",
+  "sha256": "…",
+  "notes": "Correções no login",
+  "minimumVersion": null,
+  "publishedAt": "2026-10-16T02:00:00Z"
+}
+```
+
+Sem release publicada: `{ "version": null }`.
+
 ## Auth
+
+### `POST /auth/check-email`
+
+Valida disponibilidade do e-mail e envia código de 6 dígitos (cadastro). Use no blur do campo e-mail.
+
+Body: `{ "email": "pedro@example.com" }`
+
+Resposta (disponível): `{ "ok": true, "codeSent": true, "expiresInMinutes": 15 }`  
+Resposta (já cadastrado): `{ "ok": false, "reason": "email_taken" }`
+
+### `POST /auth/send-registration-code`
+
+Reenvia o código de cadastro (mesmo contrato de sucesso que `check-email`).
 
 ### `POST /auth/register`
 
@@ -23,7 +55,8 @@ Body:
 {
   "email": "pedro@example.com",
   "password": "senha-segura",
-  "displayName": "Pedro"
+  "displayName": "Pedro",
+  "verificationCode": "123456"
 }
 ```
 
@@ -52,6 +85,14 @@ Duração padrão (`.env`): access JWT **15 min** (`JWT_ACCESS_EXPIRES_IN`), ref
 ### `POST /auth/logout`
 
 Body: `{ "refreshToken": "..." }` — revoga o refresh no banco.
+
+### `POST /auth/forgot-password`
+
+Body: `{ "email": "pedro@example.com" }` — envia código de 6 dígitos se o e-mail existir (resposta genérica sempre).
+
+### `POST /auth/reset-password`
+
+Body: `{ "email", "code": "123456", "newPassword" }` — redefine a senha e revoga refresh tokens ativos.
 
 ### `GET /auth/me`
 
