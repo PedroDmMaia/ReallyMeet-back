@@ -53,6 +53,18 @@ export class RoomsService {
   }
 
   async listPublicOpen() {
+    const [rooms, liveCounts] = await Promise.all([
+      this.findPublicOpen(),
+      this.livekit.activeParticipantCounts(),
+    ]);
+    if (!liveCounts) return rooms;
+    return rooms.map((room) => ({
+      ...room,
+      participantCount: liveCounts.get(room.slug) ?? 0,
+    }));
+  }
+
+  private findPublicOpen() {
     return this.prisma.room.findMany({
       where: {
         isPublic: true,
