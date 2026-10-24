@@ -5,6 +5,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LivekitService } from '../livekit/livekit.service';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { RoomTokenDto } from './dto/room-token.dto';
 import { RoomsService } from './rooms.service';
 
 @ApiTags('rooms')
@@ -38,12 +39,17 @@ export class RoomsController {
   }
 
   @Post(':slug/token')
-  async token(@CurrentUser() user: AuthUser, @Param('slug') slug: string) {
+  async token(
+    @CurrentUser() user: AuthUser,
+    @Param('slug') slug: string,
+    @Body() body: RoomTokenDto,
+  ) {
     const room = await this.roomsService.assertCanJoin(slug, user.id);
     const result = await this.livekitService.createParticipantToken({
       roomName: room.slug,
       identity: user.id,
       name: user.displayName,
+      purpose: body.purpose,
     });
     await this.roomsService.touchActivity(room.slug);
     return result;

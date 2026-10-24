@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { TrackSource } from '@livekit/protocol';
 import {
   AccessToken,
   RoomServiceClient,
@@ -45,7 +46,21 @@ export class LivekitService {
     if (!client) return null;
     try {
       const rooms = await client.listRooms();
-      const counts = new Map(rooms.map((room) => [room.name, room.numParticipants]));
+      const counts = new Map<string, number>();
+      await Promise.all(
+        rooms.map(async (room) => {
+          if (!room.numParticipants) {
+            counts.set(room.name, 0);
+            return;
+          }
+          try {
+            const participants = await client.listParticipants(room.name);
+            counts.set(room.name, humanParticipantCount(participants));
+          } catch {
+            counts.set(room.name, room.numParticipants);
+          }
+        }),
+      );
       this.roomCountsCache = { at: Date.now(), counts };
       return counts;
     } catch (error) {
@@ -61,7 +76,7 @@ export class LivekitService {
     }
     try {
       const participants = await client.listParticipants(roomName);
-      return participants.length;
+      return humanParticipantCount(participants);
     } catch (error) {
       this.logger.debug(
         `Sala LiveKit ${roomName} sem participantes ativos: ${(error as Error).message}`,
@@ -74,6 +89,7 @@ export class LivekitService {
     roomName: string;
     identity: string;
     name: string;
+    purpose?: 'screen';
   }) {
     const apiKey = this.config.get<string>('LIVEKIT_API_KEY');
     const apiSecret = this.config.get<string>('LIVEKIT_API_SECRET');
@@ -91,17 +107,23 @@ export class LivekitService {
     }
 
     try {
+      const screen = input.purpose === 'screen';
+      const identity = screen ? `${input.identity}:screen` : input.identity;
       const at = new AccessToken(apiKey, apiSecret, {
-        identity: input.identity,
+        identity,
         name: input.name,
+        metadata: screen
+          ? JSON.stringify({ ownerIdentity: input.identity, displayName: input.name })
+          : undefined,
         ttl: '1h',
       });
       at.addGrant({
         roomJoin: true,
         room: input.roomName,
         canPublish: true,
-        canSubscribe: true,
-        canPublishData: true,
+        canSubscribe: !screen,
+        canPublishData: !screen,
+        ...(screen ? { canPublishSources: [TrackSource.SCREEN_SHARE] } : {}),
       });
 
       const token = await at.toJwt();
@@ -186,4 +208,8 @@ export class LivekitService {
 
     return { ok: true };
   }
+}
+
+function humanParticipantCount(participants: Array<{ identity?: string }>): number {
+  return participants.filter((participant) => !participant.identity?.endsWith(':screen')).length;
 }
